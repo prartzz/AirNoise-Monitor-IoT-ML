@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirNoise Prediction & Lookup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="datetime-local"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .result.visible {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .source-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .source-badge.actual {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .source-badge.predicted {
+            background: #cfe2ff;
+            color: #084298;
+        }
+        
+        .result-values {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .value-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .value-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .value-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .value-unit {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+        
+        .error {
+            display: none;
+            padding: 15px;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        
+        .error.visible {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        .info-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 AirNoise Monitor</h1>
+        <p class="subtitle">Get PM2.5, PM10, and Noise levels for any date and time</p>
+        
+        <div class="form-group">
+            <label for="datetime">Select Date & Time:</label>
+            <input type="datetime-local" id="datetime" required>
+        </div>
+        
+        <button onclick="queryData()">Get Data</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px;">Loading...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="result" id="result">
+            <div class="result-header">
+                <div class="result-title">Results</div>
+                <span class="source-badge" id="sourceBadge"></span>
+            </div>
+            <div class="result-values">
+                <div class="value-card">
+                    <div class="value-label">PM2.5</div>
+                    <div class="value-number" id="valuePM25">--</div>
+                    <div class="value-unit">μg/m³</div>
+                </div>
+                <div class="value-card">
+                    <div class="value-label">PM10</div>
+                    <div class="value-number" id="valuePM10">--</div>
+                    <div class="value-unit">μg/m³</div>
+                </div>
+                <div class="value-card">
+                    <div class="value-label">Noise</div>
+                    <div class="value-number" id="valueNoise">--</div>
+                    <div class="value-unit">dB</div>
+                </div>
+            </div>
+            <div class="info-section">
+                <div class="info-label" id="resultDateTime">Date & Time: --</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Set input to current datetime by default
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById("datetime").value = now.toISOString().slice(0, 16);
+        
+        function queryData() {
+            const datetimeInput = document.getElementById("datetime").value;
+            
+            if (!datetimeInput) {
+                showError("Please select a date and time");
+                return;
+            }
+            
+            // Convert local datetime to ISO format
+            const dt = new Date(datetimeInput);
+            const isoDatetime = dt.toISOString().slice(0, 16);
+            
+            showLoading(true);
+            hideError();
+            
+            fetch("/api/query", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ datetime: isoDatetime })
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResult(data);
+                }
+            })
+            .catch(error => {
+                showLoading(false);
+                showError("Error: " + error.message);
+            });
+        }
+        
+        function displayResult(data) {
+            document.getElementById("valuePM25").textContent = data.PM2_5;
+            document.getElementById("valuePM10").textContent = data.PM10;
+            document.getElementById("valueNoise").textContent = data.Noise;
+            document.getElementById("resultDateTime").textContent = `Date & Time: ${data.datetime}`;
+            
+            const badge = document.getElementById("sourceBadge");
+            if (data.source === "actual") {
+                badge.className = "source-badge actual";
+                badge.textContent = "Actual Data";
+            } else {
+                badge.className = "source-badge predicted";
+                badge.textContent = "Predicted";
+            }
+            
+            document.getElementById("result").classList.add("visible");
+        }
+        
+        function showLoading(show) {
+            document.getElementById("loading").style.display = show ? "block" : "none";
+        }
+        
+        function showError(msg) {
+            const errorDiv = document.getElementById("error");
+            errorDiv.textContent = msg;
+            errorDiv.classList.add("visible");
+        }
+        
+        function hideError() {
+            document.getElementById("error").classList.remove("visible");
+        }
+        
+        // Allow Enter key to submit
+        document.getElementById("datetime").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") queryData();
+        });
+    </script>
+</body>
+</html>
